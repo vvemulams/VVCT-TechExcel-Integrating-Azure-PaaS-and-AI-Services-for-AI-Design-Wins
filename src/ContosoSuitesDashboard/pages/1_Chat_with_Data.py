@@ -18,10 +18,15 @@ def create_chat_completion(messages):
     )
     
     aoai_endpoint = st.secrets["aoai"]["endpoint"]
+    aoai_key = st.secrets["aoai"]["key"]
     aoai_deployment_name = st.secrets["aoai"]["deployment_name"]
+    search_endpoint = st.secrets["search"]["endpoint"]
+    search_key = st.secrets["search"]["key"]
+    search_index_name = st.secrets["search"]["index_name"]
 
     client = openai.AzureOpenAI(
-        azure_ad_token_provider=token_provider,
+        #azure_ad_token_provider=token_provider,
+        api_key= aoai_key,
         api_version="2024-06-01",
         azure_endpoint = aoai_endpoint
     )
@@ -32,8 +37,24 @@ def create_chat_completion(messages):
             {"role": m["role"], "content": m["content"]}
             for m in messages
         ],
-        stream=True
+        stream=True,
+        extra_body={
+            "data_sources": [
+                {
+                    "type": "azure_search",
+                    "parameters": {
+                        "endpoint": search_endpoint,
+                        "index_name": search_index_name,
+                        "authentication": {
+                            "type": "api_key",
+                            "key": search_key
+                        }
+                    }
+                }
+            ]
+        }
     )
+
 
 def handle_chat_prompt(prompt):
     """Echo the user's prompt to the chat window.
