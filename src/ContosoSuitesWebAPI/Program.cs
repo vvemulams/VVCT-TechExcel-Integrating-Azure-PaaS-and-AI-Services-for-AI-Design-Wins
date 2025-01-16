@@ -137,6 +137,7 @@ app.MapGet("/Hotels/{hotelId}/Bookings/{min_date}", async (int hotelId, DateTime
     .WithName("GetRecentBookingsForHotel")
     .WithOpenApi();
 
+/*
 // This endpoint is used to send a message to the Azure OpenAI endpoint.
 app.MapPost("/Chat", async Task<string> (HttpRequest request) =>
 {
@@ -146,6 +147,7 @@ app.MapPost("/Chat", async Task<string> (HttpRequest request) =>
 })
     .WithName("Chat")
     .WithOpenApi();
+*/
 
 // This endpoint is used to vectorize a text string.
 // We will use this to generate embeddings for the maintenance request text.
