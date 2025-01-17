@@ -42,7 +42,8 @@ builder.Services.AddSingleton<IDatabaseService, DatabaseService>((_) =>
 builder.Services.AddSingleton<CosmosClient>((_) =>
 {
     CosmosClient client = new(
-        connectionString: builder.Configuration["CosmosDB:AccountEndpoint"]!
+        accountEndpoint: builder.Configuration["CosmosDB:AccountEndpoint"],
+        tokenCredential : new DefaultAzureCredential()
     );
     return client;
 });
