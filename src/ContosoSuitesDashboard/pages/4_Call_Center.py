@@ -49,15 +49,25 @@ def create_transcription_request(audio_file, speech_recognition_language="en-US"
     done = False
 
     def stop_cb(evt):
-        print(f'CLOSING on {evt}')
-        nonlocal done
-        done= True
+        # Subscribe to the events fired by the conversation transcriber
+        transcriber.transcribed.connect(handle_final_result)
+        transcriber.session_started.connect(lambda evt: print(f'SESSION STARTED: {evt}'))
+        transcriber.session_stopped.connect(lambda evt: print(f'SESSION STOPPED {evt}'))
+        transcriber.canceled.connect(lambda evt: print(f'CANCELED {evt}'))
+        # stop continuous transcription on either session stopped or canceled events
+        transcriber.session_stopped.connect(stop_cb)
+        transcriber.canceled.connect(stop_cb)
 
-    # TODO: Subscribe to the events fired by the conversation transcriber
-    # TODO: stop continuous transcription on either session stopped or canceled events
+        transcriber.start_transcribing_async()
 
-    # TODO: remove this placeholder code and perform the actual transcription
-    all_results = ['This is a test.', 'Fill in with real transcription.']
+        # Read the whole wave files at once and stream it to sdk
+        _, wav_data = wavfile.read(audio_file)
+        stream.write(wav_data.tobytes())
+        stream.close()
+        while not done:
+            time.sleep(.5)
+
+        transcriber.stop_transcribing_async()
 
     return all_results
 
@@ -70,10 +80,12 @@ def make_azure_openai_chat_request(system, call_contents):
     )
     
     aoai_endpoint = st.secrets["aoai"]["endpoint"]
+    aoai_key = st.secrets["aoai"]["key"]
     aoai_deployment_name = st.secrets["aoai"]["deployment_name"]
 
     client = openai.AzureOpenAI(
-        azure_ad_token_provider=token_provider,
+        #azure_ad_token_provider=token_provider,
+        api_key= aoai_key,
         api_version="2024-06-01",
         azure_endpoint = aoai_endpoint
     )
@@ -90,7 +102,33 @@ def make_azure_openai_chat_request(system, call_contents):
 def is_call_in_compliance(call_contents, include_recording_message, is_relevant_to_topic):
     """Analyze a call for relevance and compliance."""
 
-    return "This is a placeholder result. Fill in with real compliance analysis."
+    joined_call_contents = ' '.join(call_contents)
+    if include_recording_message:
+        include_recording_message_text = "2. Was the caller aware that the call was being recorded?"
+    else:
+        include_recording_message_text = ""
+
+    if is_relevant_to_topic:
+        is_relevant_to_topic_text = "3. Was the call relevant to the hotel and resort industry?"
+    else:
+        is_relevant_to_topic_text = ""
+
+    system = f"""
+        You are an automated analysis system for Contoso Suites.
+        Contoso Suites is a luxury hotel and resort chain with locations
+        in a variety of Caribbean nations and territories.
+
+        You are analyzing a call for relevance and compliance.
+
+        You will only answer the following questions based on the call contents:
+        1. Was there vulgarity on the call?
+        {include_recording_message_text}
+        {is_relevant_to_topic_text}
+    """
+
+    response = make_azure_openai_chat_request(system, joined_call_contents)
+    return response.choices[0].message.content
+
 
 @st.cache_data
 def generate_extractive_summary(call_contents):
